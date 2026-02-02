@@ -1,13 +1,12 @@
-use std::net::Ipv4Addr;
+use std::{ fmt::Display, net::Ipv4Addr };
 
 use crate::{ clients::DhcpV4Client, options::DhcpV4Option };
 
+#[derive(Clone)]
 pub struct DhcpV4Scope {
     name: String,
     subnet_ip: Ipv4Addr,
     subnet_prefix: u8,
-    gateway_ip: Ipv4Addr,
-    dns_ip: Ipv4Addr,
     start_ip: Ipv4Addr,
     end_ip: Ipv4Addr,
     lease_time: u32,
@@ -15,3 +14,11 @@ pub struct DhcpV4Scope {
     clients: Vec<DhcpV4Client>,
     reserved_ips: Vec<Ipv4Addr>,
 }
+
+impl Display for DhcpV4Scope {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}/{}", self.name, self.subnet_ip, self.subnet_prefix)
+    }
+}
+
+impl DhcpV4Scope {}

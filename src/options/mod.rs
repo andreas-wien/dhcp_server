@@ -15,7 +15,7 @@ enum DhcpOptionType {
     // TODO: Implement all options listed in rfc2132
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DhcpV4Option {
     code: u8,
     data: Vec<u8>, // TODO: Implement parsing function for option data by matching the DhcpOptionType enum

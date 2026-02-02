@@ -36,7 +36,7 @@ pub struct DhcpV4Message {
 }
 
 impl DhcpV4Message {
-    pub fn get_mcookie(&self) -> &[u8] {
+    pub fn mcookie(&self) -> &[u8] {
         &self.mcookie
     }
 }
