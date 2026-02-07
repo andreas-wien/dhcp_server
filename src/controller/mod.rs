@@ -14,26 +14,27 @@ impl Display for ServerAlreadyStartedError {
 }
 
 pub struct ServerController {
-    server: Option<DhcpV4Server>,
-    running_flag: Option<Arc<Mutex<bool>>>,
+    server: Option<Arc<Mutex<DhcpV4Server>>>,
     handle: Option<JoinHandle<()>>,
 }
 
 impl ServerController {
     pub fn new() -> Self {
         Self {
-            server: Some(DhcpV4Server::new()),
-            running_flag: None,
+            server: None,
             handle: None,
         }
     }
 
     pub async fn start(&mut self) -> Result<(), ServerAlreadyStartedError> {
-        let server = self.server
-            .take()
-            .ok_or(ServerAlreadyStartedError("Server already started".to_string()))?;
+        if self.handle.is_some() {
+            return Err(ServerAlreadyStartedError("Server already started".to_string()));
+        }
 
-        let handle = server.start_server().await;
+        let server = DhcpV4Server::new();
+        let (shared, handle) = server.start_server().await;
+
+        self.server = Some(shared);
         self.handle = Some(handle);
 
         Ok(())
@@ -43,13 +44,16 @@ impl ServerController {
         if let Some(handle) = &self.handle {
             handle.abort();
         }
-        self.server = Some(DhcpV4Server::new());
+
+        if let Some(server) = &self.server {
+            server.lock().await.stop_server().await;
+        }
+
+        self.server = None;
+        self.handle = None;
     }
 
-    pub fn is_running(&self) -> bool {
-        self.running_flag
-            .as_ref()
-            .map(|r| tokio::runtime::Handle::current().block_on(async { *r.lock().await }))
-            .unwrap_or(false)
+    pub fn server(&self) -> Option<Arc<Mutex<DhcpV4Server>>> {
+        self.server.clone()
     }
 }

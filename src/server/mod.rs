@@ -1,4 +1,5 @@
 use tokio::net::UdpSocket;
+use tokio::sync::Mutex;
 use tokio::task;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
@@ -31,12 +32,20 @@ impl DhcpV4Server {
         }
     }
 
-    pub async fn start_server(mut self) -> task::JoinHandle<()> {
-        let token = self.token.clone();
+    pub async fn start_server(self) -> (Arc<Mutex<DhcpV4Server>>, task::JoinHandle<()>) {
+        let server = Arc::new(Mutex::new(self));
+        let server_clone = Arc::clone(&server);
+        let token = {
+            let s = server_clone.lock().await;
+            s.token.clone()
+        };
 
-        task::spawn(async move {
-            self.start_listening(token).await;
-        })
+        let handle = task::spawn(async move {
+            let mut server = server_clone.lock().await;
+            server.start_listening(token).await;
+        });
+
+        (server, handle)
     }
 
     async fn start_listening(&mut self, token: Arc<CancellationToken>) {
@@ -52,8 +61,6 @@ impl DhcpV4Server {
                 _ = self.receive_packet() => {}
             }
         }
-
-        self.stop_server().await;
     }
 
     pub async fn stop_server(&self) {
@@ -70,5 +77,9 @@ impl DhcpV4Server {
                 panic!("Not a DHCP message");
             }
         }
+    }
+
+    pub fn scopes(&self) -> &Vec<DhcpV4Scope> {
+        &self.scopes
     }
 }
