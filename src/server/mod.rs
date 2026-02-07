@@ -1,8 +1,4 @@
-use tokio::net::UdpSocket;
-use tokio::sync::Mutex;
-use tokio::task;
-use std::sync::Arc;
-use tokio_util::sync::CancellationToken;
+use std::net::UdpSocket;
 
 use crate::clients::DhcpV4Client;
 use crate::messages::parse_dhcpv4message;
@@ -17,7 +13,6 @@ pub struct DhcpV4Server {
     options: Vec<DhcpV4Option>,
     lease_time: u32,
     socket: Option<UdpSocket>,
-    token: Arc<CancellationToken>,
 }
 
 impl DhcpV4Server {
@@ -28,49 +23,19 @@ impl DhcpV4Server {
             options: vec![],
             lease_time: 0,
             socket: None,
-            token: Arc::new(CancellationToken::new()),
         }
     }
 
-    pub async fn start_server(self) -> (Arc<Mutex<DhcpV4Server>>, task::JoinHandle<()>) {
-        let server = Arc::new(Mutex::new(self));
-        let server_clone = Arc::clone(&server);
-        let token = {
-            let s = server_clone.lock().await;
-            s.token.clone()
-        };
-
-        let handle = task::spawn(async move {
-            let mut server = server_clone.lock().await;
-            server.start_listening(token).await;
-        });
-
-        (server, handle)
-    }
-
-    async fn start_listening(&mut self, token: Arc<CancellationToken>) {
-        let socket = UdpSocket::bind(format!("0.0.0.0:{}", DHCP_SERVER_PORT)).await.unwrap();
+    pub fn start_listening(&mut self) {
+        let socket = UdpSocket::bind(format!("0.0.0.0:{}", DHCP_SERVER_PORT)).unwrap();
         socket.set_broadcast(true).unwrap();
         self.socket = Some(socket);
-
-        loop {
-            tokio::select! {
-                _ = token.cancelled() => {
-                    break;
-                }
-                _ = self.receive_packet() => {}
-            }
-        }
     }
 
-    pub async fn stop_server(&self) {
-        self.token.cancel();
-    }
-
-    async fn receive_packet(&mut self) {
+    pub fn receive_packet(&mut self) {
         let mut buf = [0u8; 576];
         if let Some(ref socket) = self.socket {
-            let (amt, src) = socket.recv_from(&mut buf).await.unwrap();
+            let (amt, src) = socket.recv_from(&mut buf).unwrap();
             let message = parse_dhcpv4message(&buf).unwrap();
             println!("{:?}", message);
             if message.mcookie() != [99, 130, 83, 99] {
