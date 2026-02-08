@@ -1,5 +1,5 @@
 mod clients;
 mod messages;
 mod options;
-mod scopes;
+pub mod scopes;
 pub mod server;

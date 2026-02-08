@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 enum DhcpOptionType {
     SubnetMask = 1,
     TimeOffset = 2,
@@ -15,7 +17,7 @@ enum DhcpOptionType {
     // TODO: Implement all options listed in rfc2132
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DhcpV4Option {
     code: u8,
     data: Vec<u8>, // TODO: Implement parsing function for option data by matching the DhcpOptionType enum

@@ -1,17 +1,14 @@
+use std::fs::File;
+use std::io::BufWriter;
 use std::net::UdpSocket;
 
-use crate::clients::DhcpV4Client;
 use crate::messages::parse_dhcpv4message;
-use crate::options::DhcpV4Option;
 use crate::scopes::DhcpV4Scope;
 
 const DHCP_SERVER_PORT: u16 = 67;
 
 pub struct DhcpV4Server {
     scopes: Vec<DhcpV4Scope>,
-    clients: Vec<DhcpV4Client>,
-    options: Vec<DhcpV4Option>,
-    lease_time: u32,
     socket: Option<UdpSocket>,
 }
 
@@ -19,9 +16,6 @@ impl DhcpV4Server {
     pub fn new() -> Self {
         Self {
             scopes: vec![],
-            clients: vec![],
-            options: vec![],
-            lease_time: 0,
             socket: None,
         }
     }
@@ -46,5 +40,29 @@ impl DhcpV4Server {
 
     pub fn scopes(&self) -> &Vec<DhcpV4Scope> {
         &self.scopes
+    }
+
+    pub fn add_scope(&mut self, scope: DhcpV4Scope) -> &DhcpV4Scope {
+        self.scopes.push(scope);
+        self.scopes.last().unwrap()
+    }
+
+    pub fn save_scopes(&self) {
+        let file = File::create("scopes.json").unwrap();
+        let mut writer = BufWriter::new(file);
+        serde_json::to_writer(&mut writer, &self.scopes).unwrap();
+    }
+
+    pub fn load_scopes(&mut self) {
+        let file = File::open("scopes.json");
+        match file {
+            Ok(file) => {
+                let scopes: Vec<DhcpV4Scope> = serde_json::from_reader(file).unwrap();
+                self.scopes = scopes;
+            }
+            Err(_) => {
+                self.scopes = vec![];
+            }
+        }
     }
 }
