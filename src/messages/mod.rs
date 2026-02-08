@@ -1,3 +1,5 @@
+use std::{ collections::HashMap };
+
 use crate::options::{ DhcpV4Option, parse_dhcp_options };
 
 #[derive(Debug, Clone)]
@@ -32,12 +34,24 @@ pub struct DhcpV4Message {
     sname: String,
     bname: String,
     mcookie: [u8; 4],
-    options: Vec<DhcpV4Option>,
+    options: HashMap<u8, DhcpV4Option>,
 }
 
 impl DhcpV4Message {
     pub fn mcookie(&self) -> &[u8] {
         &self.mcookie
+    }
+
+    pub fn op(&self) -> u8 {
+        self.op
+    }
+
+    pub fn options(&self) -> &HashMap<u8, DhcpV4Option> {
+        &self.options
+    }
+
+    pub fn ciaddr(&self) -> u32 {
+        self.ciaddr
     }
 }
 

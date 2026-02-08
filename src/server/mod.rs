@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::net::UdpSocket;
 
-use crate::messages::parse_dhcpv4message;
+use crate::messages::{ DhcpV4Message, parse_dhcpv4message };
 use crate::scopes::DhcpV4Scope;
 
 const DHCP_SERVER_PORT: u16 = 67;
@@ -26,16 +26,20 @@ impl DhcpV4Server {
         self.socket = Some(socket);
     }
 
-    pub fn receive_packet(&mut self) {
+    pub fn receive_packet(&mut self) -> Option<DhcpPacket> {
         let mut buf = [0u8; 576];
         if let Some(ref socket) = self.socket {
             let (amt, src) = socket.recv_from(&mut buf).unwrap();
             let message = parse_dhcpv4message(&buf).unwrap();
-            println!("{:?}", message);
+
             if message.mcookie() != [99, 130, 83, 99] {
                 panic!("Not a DHCP message");
             }
+
+            return Some(DhcpPacket { message, bytes_received: amt, from: src });
         }
+
+        return None;
     }
 
     pub fn scopes(&self) -> &Vec<DhcpV4Scope> {
@@ -64,5 +68,25 @@ impl DhcpV4Server {
                 self.scopes = vec![];
             }
         }
+    }
+}
+
+pub struct DhcpPacket {
+    message: DhcpV4Message,
+    bytes_received: usize,
+    from: std::net::SocketAddr,
+}
+
+impl DhcpPacket {
+    pub fn message(&self) -> &DhcpV4Message {
+        &self.message
+    }
+
+    pub fn bytes_received(&self) -> usize {
+        self.bytes_received
+    }
+
+    pub fn from(&self) -> &std::net::SocketAddr {
+        &self.from
     }
 }
